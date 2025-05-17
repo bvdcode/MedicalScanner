@@ -11,10 +11,25 @@ on:
 jobs:
   build-apk:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for GitVersion to work correctly
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.10.2
+        with:
+          versionSpec: '5.x'
+
+      - name: Determine Version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.10.2
+        with:
+          useConfigFile: false
 
       - name: List directory structure
         shell: bash
@@ -28,12 +43,11 @@ jobs:
       - name: Install MAUI workload
         run: dotnet workload install maui
 
-      # Update PROJECT_PATH after seeing the actual structure
       - name: Set project path
         id: set_project
         shell: bash
         run: |
-          # Find the .csproj file (adjust the path if needed after seeing directory listing)
+          # Find the .csproj file
           PROJECT_PATH=$(find . -name "*.csproj" | grep -i medical | head -n1)
           if [ -z "$PROJECT_PATH" ]; then
             echo "No project file found!"
@@ -42,25 +56,18 @@ jobs:
           echo "Found project at: $PROJECT_PATH"
           echo "project_path=$PROJECT_PATH" >> $GITHUB_OUTPUT
 
-      - name: Bump version in .csproj
-        id: bump_version
+      - name: Update version in .csproj
         shell: bash
         run: |
           VERSION_FILE="${{ steps.set_project.outputs.project_path }}"
-          # Use simpler grep patterns that don't require -P
-          OLD_VERSION=$(grep "<ApplicationDisplayVersion>" "$VERSION_FILE" | sed 's/.*<ApplicationDisplayVersion>\(.*\)<\/ApplicationDisplayVersion>.*/\1/' || echo "1.0.0")
-          OLD_CODE=$(grep "<ApplicationVersion>" "$VERSION_FILE" | sed 's/.*<ApplicationVersion>\(.*\)<\/ApplicationVersion>.*/\1/' || echo "1")
+          VERSION="${{ steps.gitversion.outputs.semVer }}"
+          BUILD_NUMBER="${{ steps.gitversion.outputs.buildMetaData }}"
           
-          NEW_CODE=$((OLD_CODE + 1))
-          NEW_VERSION="1.0.$NEW_CODE"
-
-          echo "Bumping version to $NEW_VERSION (code: $NEW_CODE)"
-          # Fix: ApplicationVersion must be an integer
-          sed -i "s|<ApplicationVersion>.*</ApplicationVersion>|<ApplicationVersion>$NEW_CODE</ApplicationVersion>|g" "$VERSION_FILE"
-          sed -i "s|<ApplicationDisplayVersion>.*</ApplicationDisplayVersion>|<ApplicationDisplayVersion>$NEW_VERSION</ApplicationDisplayVersion>|g" "$VERSION_FILE"
-
-          echo "version_name=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "version_code=$NEW_CODE" >> $GITHUB_OUTPUT
+          echo "Setting version to $VERSION (build: $BUILD_NUMBER)"
+          
+          # ApplicationVersion needs to be an integer for Android
+          sed -i "s|<ApplicationVersion>.*</ApplicationVersion>|<ApplicationVersion>$BUILD_NUMBER</ApplicationVersion>|g" "$VERSION_FILE"
+          sed -i "s|<ApplicationDisplayVersion>.*</ApplicationDisplayVersion>|<ApplicationDisplayVersion>$VERSION</ApplicationDisplayVersion>|g" "$VERSION_FILE"
 
       - name: Restore and build
         run: |
@@ -82,8 +89,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "v${{ steps.bump_version.outputs.version_name }}"
-          tag_name: "v${{ steps.bump_version.outputs.version_name }}"
+          name: "v${{ steps.gitversion.outputs.semVer }}"
+          tag_name: "v${{ steps.gitversion.outputs.semVer }}"
           files: ${{ steps.find_apk.outputs.apk_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
