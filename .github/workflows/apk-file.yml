@@ -48,15 +48,16 @@ jobs:
         run: |
           VERSION_FILE="${{ steps.set_project.outputs.project_path }}"
           # Use simpler grep patterns that don't require -P
-          OLD_VERSION=$(grep "<ApplicationVersion>" "$VERSION_FILE" | sed 's/.*<ApplicationVersion>\(.*\)<\/ApplicationVersion>.*/\1/' || echo "1.0.0")
-          OLD_CODE=$(grep "<ApplicationDisplayVersion>" "$VERSION_FILE" | sed 's/.*<ApplicationDisplayVersion>\(.*\)<\/ApplicationDisplayVersion>.*/\1/' || echo "1")
+          OLD_VERSION=$(grep "<ApplicationDisplayVersion>" "$VERSION_FILE" | sed 's/.*<ApplicationDisplayVersion>\(.*\)<\/ApplicationDisplayVersion>.*/\1/' || echo "1.0.0")
+          OLD_CODE=$(grep "<ApplicationVersion>" "$VERSION_FILE" | sed 's/.*<ApplicationVersion>\(.*\)<\/ApplicationVersion>.*/\1/' || echo "1")
           
           NEW_CODE=$((OLD_CODE + 1))
           NEW_VERSION="1.0.$NEW_CODE"
 
-          echo "Bumping version to $NEW_VERSION ($NEW_CODE)"
-          sed -i "s|<ApplicationVersion>.*</ApplicationVersion>|<ApplicationVersion>$NEW_VERSION</ApplicationVersion>|g" "$VERSION_FILE"
-          sed -i "s|<ApplicationDisplayVersion>.*</ApplicationDisplayVersion>|<ApplicationDisplayVersion>$NEW_CODE</ApplicationDisplayVersion>|g" "$VERSION_FILE"
+          echo "Bumping version to $NEW_VERSION (code: $NEW_CODE)"
+          # Fix: ApplicationVersion must be an integer
+          sed -i "s|<ApplicationVersion>.*</ApplicationVersion>|<ApplicationVersion>$NEW_CODE</ApplicationVersion>|g" "$VERSION_FILE"
+          sed -i "s|<ApplicationDisplayVersion>.*</ApplicationDisplayVersion>|<ApplicationDisplayVersion>$NEW_VERSION</ApplicationDisplayVersion>|g" "$VERSION_FILE"
 
           echo "version_name=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "version_code=$NEW_CODE" >> $GITHUB_OUTPUT
