@@ -6,21 +6,19 @@ namespace MedicalScanner
 {
     public partial class MainPage : ContentPage
     {
-        private readonly IBluetoothLE _ble;
         private readonly IAdapter _adapter;
 
         public MainPage()
         {
             InitializeComponent();
 
-            _ble = CrossBluetoothLE.Current;
             _adapter = CrossBluetoothLE.Current.Adapter;
             _adapter.DeviceDiscovered += OnDeviceDiscovered;
         }
 
         private async void OnCounterClicked(object? sender, EventArgs e)
         {
-            OutputLabel.Text = "Scanning for devices...";
+            OutputLabel.Text = "Scanning for Low-Energy devices...";
             var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
             if (status != PermissionStatus.Granted)
             {
