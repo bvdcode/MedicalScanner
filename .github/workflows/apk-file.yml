@@ -11,8 +11,6 @@ on:
 jobs:
   build-apk:
     runs-on: windows-latest
-    container:
-      image: mcr.microsoft.com/dotnet/maui-sdk:9.0
     permissions:
       contents: write
 
@@ -33,12 +31,24 @@ jobs:
         with:
           useConfigFile: false
 
-      - name: List directory structure
-        shell: bash
-        run: find . -type d -not -path "*/\.*" | sort
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
 
-      # No need for .NET setup or MAUI workload install - already in container
+      # Cache MAUI workload
+      - name: Cache MAUI workload
+        id: cache-maui
+        uses: actions/cache@v3
+        with:
+          path: ~/.dotnet/workloads
+          key: ${{ runner.os }}-maui-workload-9.0.x
 
+      - name: Install MAUI workload (if not cached)
+        if: steps.cache-maui.outputs.cache-hit != 'true'
+        run: dotnet workload install maui
+
+      # Rest of workflow remains the same
       - name: Set project path
         id: set_project
         shell: bash
