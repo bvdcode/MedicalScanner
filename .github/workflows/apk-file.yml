@@ -26,6 +26,7 @@ jobs:
 
       - name: Bump version in .csproj
         id: bump_version
+        shell: bash
         run: |
           VERSION_FILE="$PROJECT_PATH"
           OLD_VERSION=$(grep -oP '(?<=<ApplicationVersion>).*?(?=</ApplicationVersion>)' "$VERSION_FILE" || echo "1.0.0")
@@ -47,6 +48,7 @@ jobs:
 
       - name: Find APK
         id: find_apk
+        shell: bash
         run: |
           APK_PATH=$(find . -type f -name "*.apk" | grep bin/Release | head -n1)
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
