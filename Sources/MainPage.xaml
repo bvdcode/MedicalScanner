@@ -14,15 +14,15 @@
                 SemanticProperties.Description="dot net bot in a hovercraft number nine" />
 
             <Label
-                Text="Bluetooth Scanner"
+                Text="BLE Scanner"
                 Style="{StaticResource Headline}"
                 SemanticProperties.HeadingLevel="Level1" />
 
             <Button
-                x:Name="CounterBtn"
+                x:Name="ToggleBtn"
                 Text="Click to scan" 
                 SemanticProperties.Hint="Starts bluetooth scanning"
-                Clicked="OnCounterClicked"
+                Clicked="OnToggleBtnClicked"
                 HorizontalOptions="Fill" />
 
             <Label x:Name="OutputLabel"
