@@ -11,6 +11,8 @@ on:
 jobs:
   build-apk:
     runs-on: windows-latest
+    container:
+      image: mcr.microsoft.com/dotnet/maui-sdk:9.0
     permissions:
       contents: write
 
@@ -18,7 +20,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for GitVersion to work correctly
+          fetch-depth: 0
 
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0.10.2
@@ -35,19 +37,12 @@ jobs:
         shell: bash
         run: find . -type d -not -path "*/\.*" | sort
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Install MAUI workload
-        run: dotnet workload install maui
+      # No need for .NET setup or MAUI workload install - already in container
 
       - name: Set project path
         id: set_project
         shell: bash
         run: |
-          # Find the .csproj file
           PROJECT_PATH=$(find . -name "*.csproj" | grep -i medical | head -n1)
           if [ -z "$PROJECT_PATH" ]; then
             echo "No project file found!"
@@ -64,12 +59,10 @@ jobs:
           BUILD_NUMBER="${{ steps.gitversion.outputs.buildMetaData }}"
           
           echo "Setting version to $VERSION (build: $BUILD_NUMBER)"
-          
-          # ApplicationVersion needs to be an integer for Android
           sed -i "s|<ApplicationVersion>.*</ApplicationVersion>|<ApplicationVersion>$BUILD_NUMBER</ApplicationVersion>|g" "$VERSION_FILE"
           sed -i "s|<ApplicationDisplayVersion>.*</ApplicationDisplayVersion>|<ApplicationDisplayVersion>$VERSION</ApplicationDisplayVersion>|g" "$VERSION_FILE"
 
-      - name: Restore and build
+      - name: Build APK
         run: |
           dotnet restore "${{ steps.set_project.outputs.project_path }}"
           dotnet build "${{ steps.set_project.outputs.project_path }}" -c Release -f:net9.0-android
@@ -83,7 +76,6 @@ jobs:
             echo "No APK file found!"
             exit 1
           fi
-          echo "Found APK at: $APK_PATH"
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -92,5 +84,3 @@ jobs:
           name: "v${{ steps.gitversion.outputs.semVer }}"
           tag_name: "v${{ steps.gitversion.outputs.semVer }}"
           files: ${{ steps.find_apk.outputs.apk_path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
