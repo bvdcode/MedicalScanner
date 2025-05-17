@@ -1,4 +1,4 @@
-Collecting workspace information# Medical Scanner
+# Medical Scanner
 
 ## Overview
 
