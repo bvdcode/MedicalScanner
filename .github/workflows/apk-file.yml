@@ -23,7 +23,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Install MAUI workload
         run: dotnet workload install maui
@@ -64,7 +64,7 @@ jobs:
       - name: Restore and build
         run: |
           dotnet restore "${{ steps.set_project.outputs.project_path }}"
-          dotnet build "${{ steps.set_project.outputs.project_path }}" -c Release -f:net8.0-android
+          dotnet build "${{ steps.set_project.outputs.project_path }}" -c Release -f:net9.0-android
 
       - name: Find APK
         id: find_apk
