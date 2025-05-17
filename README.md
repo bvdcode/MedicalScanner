@@ -2,6 +2,8 @@
 
 ## Overview
 
+Download APK - [here](https://github.com/bvdcode/MedicalScanner/releases)
+
 Medical Scanner is a cross-platform mobile application built with .NET MAUI that demonstrates Bluetooth Low Energy (BLE) scanning functionality. This app is specifically focused on scanning for medical BLE devices and can be used for testing or as a foundation for more advanced medical device connectivity applications.
 
 ## Features
