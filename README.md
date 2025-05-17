@@ -24,15 +24,15 @@ The app is built using:
 
 ```
 MedicalScanner/
-├── .github/workflows/    # CI/CD configuration
-├── Sources/              # Application source code
-│   ├── Platforms/        # Platform-specific implementations
-│   ├── Resources/        # App resources (images, fonts, styles)
-│   ├── App.xaml          # Application definition
-│   ├── MainPage.xaml     # Main UI
-│   ├── MauiProgram.cs    # App initialization
+├── .github/workflows/         # CI/CD configuration
+├── Sources/                   # Application source code
+│   ├── Platforms/             # Platform-specific implementations
+│   ├── Resources/             # App resources (images, fonts, styles)
+│   ├── App.xaml               # Application definition
+│   ├── MainPage.xaml          # Main UI
+│   ├── MauiProgram.cs         # App initialization
 │   └── MedicalScanner.csproj  # Project configuration
-└── README.md             # This file
+└── README.md                  # This file
 ```
 
 ## Setup Instructions
