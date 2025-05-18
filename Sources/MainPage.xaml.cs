@@ -53,10 +53,10 @@ namespace MedicalScanner
                     return false;
                 }
             }
-            status = await Permissions.CheckStatusAsync<Permissions.NearbyWifiDevices>();
+            status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
             if (status != PermissionStatus.Granted)
             {
-                status = await Permissions.RequestAsync<Permissions.NearbyWifiDevices>();
+                status = await Permissions.RequestAsync<Permissions.Bluetooth>();
                 if (status != PermissionStatus.Granted)
                 {
                     await DisplayAlert("Permission Required", "Bluetooth permission is needed for Bluetooth scanning.", "OK");
