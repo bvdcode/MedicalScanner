@@ -39,11 +39,21 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="ble:IDevice">
                         <Border Margin="0,0" StrokeShape="RoundRectangle 8">
-                            <VerticalStackLayout Padding="12,4">
-                                <Label Text="{Binding Name}" FontSize="16"/>
-                                <Label Text="{Binding Id}" FontSize="10"/>
-                                <Label Text="{Binding Rssi, Converter={StaticResource RssiToSignalConverter}}" FontSize="12"/>
-                            </VerticalStackLayout>
+                            <Grid Padding="12,4" ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                                <VerticalStackLayout Grid.Column="0">
+                                    <Label Text="{Binding Name, FallbackValue='Hidden'}" FontSize="16"/>
+                                    <Label Text="{Binding Id}" FontSize="10"/>
+                                    <Label Text="{Binding Rssi, Converter={StaticResource RssiToSignalConverter}}" FontSize="12"/>
+                                </VerticalStackLayout>
+                                <Button 
+                                    Grid.Column="1"
+                                    Text="Connect" 
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=ConnectCommand}" 
+                                    CommandParameter="{Binding .}" 
+                                    VerticalOptions="Center"
+                                    HeightRequest="40"
+                                    WidthRequest="100" />
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

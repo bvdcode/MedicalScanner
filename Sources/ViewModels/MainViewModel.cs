@@ -12,10 +12,10 @@ public partial class MainViewModel : ObservableObject
 {
     public string ScanButtonText => IsScanning ? "⏹ Stop Scanning" : "🔍 Scan Devices";
     public ObservableCollection<IDevice> Devices { get; } = [];
+    public IRelayCommand<IDevice> ConnectCommand { get; }
     public IRelayCommand ScanCommand { get; }
     private readonly IAdapter _adapter;
     private bool _isScanning;
-
 
     public bool IsScanning
     {
@@ -35,6 +35,51 @@ public partial class MainViewModel : ObservableObject
         _adapter.DeviceDiscovered += OnDeviceDiscovered;
         _adapter.ScanTimeoutElapsed += (_, _) => StopScanUIUpdate();
         ScanCommand = new RelayCommand(async () => await ToggleScanAsync());
+        ConnectCommand = new RelayCommand<IDevice>(async (device) => await ConnectToDevice(device));
+    }
+
+    private async Task ConnectToDevice(IDevice? device)
+    {
+        if (device == null)
+        {
+            return;
+        }
+        if (IsScanning)
+        {
+            await _adapter.StopScanningForDevicesAsync();
+            StopScanUIUpdate();
+        }
+        try
+        {
+            var services = await device.GetServicesAsync();
+            StringBuilder sb = new();
+            sb.AppendLine($"Name: {device.Name}");
+            sb.AppendLine($"ID: {device.Id}");
+            sb.AppendLine($"State: {device.State}");
+            sb.AppendLine($"Name: {device.Name}");
+            sb.AppendLine($"Rssi: {device.Rssi}");
+            sb.AppendLine($"AdvertisementRecords: {device.AdvertisementRecords.Count}");
+            if (services.Count > 0)
+            {
+                sb.AppendLine($"Device Services: {services.Count}");
+            }
+            foreach (var service in services)
+            {
+                sb.AppendLine($"Service UUID: {service.Id}");
+                var characteristics = await service.GetCharacteristicsAsync();
+                foreach (var characteristic in characteristics)
+                {
+                    sb.AppendLine($"Characteristic UUID: {characteristic.Id}");
+                    sb.AppendLine($"Characteristic Properties: {characteristic.Properties}");
+                }
+            }
+
+            await Shell.Current.DisplayAlert("Device Info", sb.ToString(), "OK");
+        }
+        catch (Exception)
+        {
+            await Shell.Current.DisplayAlert("Connection Error", "Failed to connect to the device.", "OK");
+        }
     }
 
     private async Task ToggleScanAsync()
@@ -71,7 +116,7 @@ public partial class MainViewModel : ObservableObject
 
     private static async Task<bool> CheckPermissionsAsync()
     {
-        var location = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+        PermissionStatus location = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         if (location != PermissionStatus.Granted)
         {
             location = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
@@ -82,7 +127,7 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
-        var bt = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+        PermissionStatus bt = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
         if (bt != PermissionStatus.Granted)
         {
             bt = await Permissions.RequestAsync<Permissions.Bluetooth>();
@@ -102,7 +147,7 @@ public partial class MainViewModel : ObservableObject
         {
             return;
         }
-        var device = args.Device;
+        IDevice device = args.Device;
         int insertIndex = 0;
         while (insertIndex < Devices.Count && Devices[insertIndex].Rssi > device.Rssi)
         {
