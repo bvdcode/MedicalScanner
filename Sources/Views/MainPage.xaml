@@ -2,35 +2,54 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:MedicalScanner.ViewModels"
+             xmlns:converters="clr-namespace:MedicalScanner.Converters"
+             xmlns:ble="clr-namespace:Plugin.BLE.Abstractions.Contracts;assembly=Plugin.BLE"
              x:Class="MedicalScanner.Views.MainPage"
              x:DataType="vm:MainViewModel">
 
+    <ContentPage.Resources>
+        <converters:RssiToSignalLevelConverter x:Key="RssiToSignalConverter" />
+    </ContentPage.Resources>
+    
     <ScrollView>
-        <VerticalStackLayout
-            Padding="30,0"
+        <VerticalStackLayout  
+            Padding="30,0"  
             Spacing="25">
-            <Image
-                Source="header_logo.png"
-                HeightRequest="185"
-                Aspect="AspectFit"
-                SemanticProperties.Description="dot net bot in a hovercraft number nine" />
+            <Image  
+                Source="header_logo.png"  
+                HeightRequest="185"  
+                Aspect="AspectFit"  
+                SemanticProperties.Description="medical and bluetooth logo" />
 
-            <Label
-                Text="BLE Scanner"
-                Style="{StaticResource Headline}"
+            <Label  
+                Text="BLE Scanner"  
+                Style="{StaticResource Headline}"  
                 SemanticProperties.HeadingLevel="Level1" />
 
-            <Button
-                Text="{Binding ScanButtonText}"
-                Command="{Binding ScanCommand}"
-                SemanticProperties.Hint="Starts bluetooth scanning"
+            <Button  
+                Text="{Binding ScanButtonText}"  
+                Command="{Binding ScanCommand}"  
+                SemanticProperties.Hint="Starts bluetooth scanning"  
                 HorizontalOptions="Fill" />
 
-            <Label
-               Text="{Binding OutputText}"
-               FontSize="14"
-               Margin="0,20,0,0" />
+            <CollectionView ItemsSource="{Binding Devices}" Margin="0,12,0,0">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="ble:IDevice">
+                        <Border Margin="0,0" StrokeShape="RoundRectangle 8">
+                            <VerticalStackLayout Padding="12,4">
+                                <Label Text="{Binding Name}" FontSize="16"/>
+                                <Label Text="{Binding Id}" FontSize="10"/>
+                                <Label Text="{Binding Rssi, Converter={StaticResource RssiToSignalConverter}}" FontSize="12"/>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </VerticalStackLayout>
     </ScrollView>
 
 </ContentPage>
+

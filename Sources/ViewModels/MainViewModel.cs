@@ -1,6 +1,7 @@
 ﻿using Plugin.BLE;
 using System.Text;
 using CommunityToolkit.Mvvm.Input;
+using System.Collections.ObjectModel;
 using Plugin.BLE.Abstractions.Contracts;
 using Plugin.BLE.Abstractions.EventArgs;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -9,34 +10,27 @@ namespace MedicalScanner.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    public string ScanButtonText => IsScanning ? "⏹ Stop Scanning" : "🔍 Scan Devices";
+    public ObservableCollection<IDevice> Devices { get; } = [];
+    public IRelayCommand ScanCommand { get; }
     private readonly IAdapter _adapter;
-    private readonly List<IDevice> _devices;
-
-    private string _outputText = "Press Scan to start.";
-    public string OutputText
-    {
-        get => _outputText;
-        set => SetProperty(ref _outputText, value);
-    }
-
     private bool _isScanning;
+
+
     public bool IsScanning
     {
         get => _isScanning;
         set
         {
             if (SetProperty(ref _isScanning, value))
+            {
                 OnPropertyChanged(nameof(ScanButtonText));
+            }
         }
     }
 
-    public string ScanButtonText => IsScanning ? "⏹ Stop Scanning" : "🔍 Scan Devices";
-
-    public IRelayCommand ScanCommand { get; }
-
     public MainViewModel()
     {
-        _devices = [];
         _adapter = CrossBluetoothLE.Current.Adapter;
         _adapter.DeviceDiscovered += OnDeviceDiscovered;
         _adapter.ScanTimeoutElapsed += (_, _) => StopScanUIUpdate();
@@ -48,7 +42,6 @@ public partial class MainViewModel : ObservableObject
         if (IsScanning)
         {
             await _adapter.StopScanningForDevicesAsync();
-            _devices.Clear();
             StopScanUIUpdate();
             return;
         }
@@ -60,10 +53,11 @@ public partial class MainViewModel : ObservableObject
         }
 
         if (!await CheckPermissionsAsync())
+        {
             return;
+        }
 
-        _devices.Clear();
-        OutputText = "Scanning for Low-Energy devices...";
+        Devices.Clear();
         IsScanning = true;
 
         await _adapter.StartScanningForDevicesAsync();
@@ -104,45 +98,16 @@ public partial class MainViewModel : ObservableObject
 
     private void OnDeviceDiscovered(object? sender, DeviceEventArgs args)
     {
-        if (_devices.Any(x => x.Id == args.Device.Id))
+        if (Devices.Any(x => x.Id == args.Device.Id))
+        {
             return;
-
-        _devices.Add(args.Device);
-
-        StringBuilder sb = new();
-        foreach (var device in _devices.OrderByDescending(x => x.Rssi))
-        {
-            string name = string.IsNullOrWhiteSpace(device.Name) ? "[Unnamed]" : device.Name;
-            sb.AppendLine($"{GetSignalLevel(device.Rssi)}: {name}");
         }
-
-        MainThread.BeginInvokeOnMainThread(() =>
+        var device = args.Device;
+        int insertIndex = 0;
+        while (insertIndex < Devices.Count && Devices[insertIndex].Rssi > device.Rssi)
         {
-            OutputText = sb.ToString();
-        });
-    }
-    private static string GetSignalLevel(int rssi)
-    {
-        if (rssi >= -60)
-        {
-            return "◉◉◉◉◉";
+            insertIndex++;
         }
-        if (rssi >= -70)
-        {
-            return "◉◉◉◉○";
-        }
-        if (rssi >= -80)
-        {
-            return "◉◉◉○○";
-        }
-        if (rssi >= -90)
-        {
-            return "◉◉○○○";
-        }
-        if (rssi >= -100)
-        {
-            return "◉○○○○";
-        }
-        return "○○○○○";
+        Devices.Insert(insertIndex, device);
     }
 }
