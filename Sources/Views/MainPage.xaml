@@ -10,7 +10,7 @@
     <ContentPage.Resources>
         <converters:RssiToSignalLevelConverter x:Key="RssiToSignalConverter" />
     </ContentPage.Resources>
-    
+
     <ScrollView>
         <VerticalStackLayout  
             Padding="30,0"  
@@ -47,7 +47,7 @@
                                 </VerticalStackLayout>
                                 <Button 
                                     Grid.Column="1"
-                                    Text="Connect" 
+                                    Text="Info" 
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=ConnectCommand}" 
                                     CommandParameter="{Binding .}" 
                                     VerticalOptions="Center"
