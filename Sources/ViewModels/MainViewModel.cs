@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using Plugin.BLE.Abstractions.Contracts;
 using Plugin.BLE.Abstractions.EventArgs;
 using CommunityToolkit.Mvvm.ComponentModel;
+using MedicalScanner.Views;
 
 namespace MedicalScanner.ViewModels;
 
@@ -40,45 +41,91 @@ public partial class MainViewModel : ObservableObject
 
     private async Task ConnectToDevice(IDevice? device)
     {
-        if (device == null)
-        {
-            return;
-        }
+        if (device == null) return;
+
+        // Cancel any ongoing scan
         if (IsScanning)
         {
             await _adapter.StopScanningForDevicesAsync();
             StopScanUIUpdate();
         }
+
         try
         {
+            // Show loading indicator
+            await Shell.Current.DisplayAlert("Connecting", $"Connecting to {device.Name ?? "device"}...", "OK");
+
+            // Connect with timeout
+            var connectTask = _adapter.ConnectToDeviceAsync(device);
+
+            // Create a timeout task
+            var timeoutTask = Task.Delay(10000); // 10 seconds
+
+            // Wait for either connection or timeout
+            var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                // Timed out
+                await Shell.Current.DisplayAlert("Timeout", "Connection attempt timed out", "OK");
+                return;
+            }
+
+            // Get services
             var services = await device.GetServicesAsync();
+
+            // Health Thermometer service UUID
+            const string HEALTH_THERMOMETER_SERVICE = "1809";
+            const string TEMPERATURE_CHARACTERISTIC = "2A1C";
+
+            // Look for the temperature service
+            var temperatureService = services.FirstOrDefault(s =>
+                s.Id.ToString().ToLowerInvariant().Contains(HEALTH_THERMOMETER_SERVICE.ToLowerInvariant()));
+
+            if (temperatureService != null)
+            {
+                // Found temperature service!
+                var characteristics = await temperatureService.GetCharacteristicsAsync();
+                var tempCharacteristic = characteristics.FirstOrDefault(c =>
+                    c.Id.ToString().ToLowerInvariant().Contains(TEMPERATURE_CHARACTERISTIC.ToLowerInvariant()));
+
+                if (tempCharacteristic != null)
+                {
+                    // Create the temperature view model
+                    var tempViewModel = new TemperatureViewModel(device, temperatureService, tempCharacteristic, _adapter);
+
+                    // Create the page
+                    var tempPage = new TemperaturePage(tempViewModel);
+
+                    // Navigate to the temperature page
+                    await Shell.Current.Navigation.PushAsync(tempPage);
+                    return;
+                }
+            }
+
+            // If we get here, no temperature service was found or navigation failed
+            // Just show generic device info
             StringBuilder sb = new();
             sb.AppendLine($"Name: {device.Name}");
             sb.AppendLine($"ID: {device.Id}");
             sb.AppendLine($"State: {device.State}");
-            sb.AppendLine($"Name: {device.Name}");
             sb.AppendLine($"Rssi: {device.Rssi}");
             sb.AppendLine($"AdvertisementRecords: {device.AdvertisementRecords.Count}");
+
             if (services.Count > 0)
             {
                 sb.AppendLine($"Device Services: {services.Count}");
-            }
-            foreach (var service in services)
-            {
-                sb.AppendLine($"Service UUID: {service.Id}");
-                var characteristics = await service.GetCharacteristicsAsync();
-                foreach (var characteristic in characteristics)
+                foreach (var service in services)
                 {
-                    sb.AppendLine($"Characteristic UUID: {characteristic.Id}");
-                    sb.AppendLine($"Characteristic Properties: {characteristic.Properties}");
+                    sb.AppendLine($"Service UUID: {service.Id}");
                 }
             }
 
             await Shell.Current.DisplayAlert("Device Info", sb.ToString(), "OK");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            await Shell.Current.DisplayAlert("Connection Error", "Failed to connect to the device.", "OK");
+            await Shell.Current.DisplayAlert("Connection Error", $"Failed to connect: {ex.Message}", "OK");
         }
     }
 
