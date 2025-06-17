@@ -4,6 +4,7 @@ using Plugin.BLE.Abstractions;
 using Plugin.BLE.Abstractions.Contracts;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 
 namespace MedicalScanner.ViewModels;
 
@@ -38,22 +39,29 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
         _temperatureCharacteristic = temperatureCharacteristic;
         _adapter = adapter;
 
-        deviceName = device.Name ?? "Unknown Device";
-        deviceId = device.Id.ToString();
+        DeviceName = device.Name ?? "Unknown Device";
+        DeviceId = device.Id.ToString();
 
         // Subscribe to value updates
         _temperatureCharacteristic.ValueUpdated += OnTemperatureUpdated;
 
         // Start notifications
-        MainThread.BeginInvokeOnMainThread(async () => {
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
             try
             {
+                // Force read the current value to verify connection
+                var initialValue = await _temperatureCharacteristic.ReadAsync();
+                Debug.WriteLine($"Initial characteristic value: {BitConverter.ToString(initialValue.data)}");
+
+                // Enable notifications
                 await _temperatureCharacteristic.StartUpdatesAsync();
-                connectionStatus = "Monitoring temperature...";
+                ConnectionStatus = "Monitoring temperature...";
             }
             catch (Exception ex)
             {
-                connectionStatus = $"Error: {ex.Message}";
+                ConnectionStatus = $"Error: {ex.Message}";
+                Debug.WriteLine($"Error starting updates: {ex}");
             }
         });
 
@@ -66,8 +74,9 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
     {
         if (e.Device?.Id == _device.Id)
         {
-            MainThread.BeginInvokeOnMainThread(() => {
-                connectionStatus = $"Device connection lost: {_device.State}";
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ConnectionStatus = $"Device connection lost: {_device.State}";
             });
         }
     }
@@ -76,8 +85,9 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
     {
         if (e.Device?.Id == _device.Id)
         {
-            MainThread.BeginInvokeOnMainThread(() => {
-                connectionStatus = $"Device disconnected: {_device.State}";
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                ConnectionStatus = $"Device disconnected: {_device.State}";
             });
         }
     }
@@ -85,37 +95,98 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
     private void OnTemperatureUpdated(object sender, Plugin.BLE.Abstractions.EventArgs.CharacteristicUpdatedEventArgs e)
     {
         var data = e.Characteristic.Value;
-        if (data.Length >= 5) // IEEE-11073 32-bit float
-        {
-            // Extract temperature (IEEE-11073 format)
-            // Skip first byte (flags) and read temperature value
-            float temperature = BitConverter.ToSingle(data, 1);
+        Debug.WriteLine($"Received temperature data: {BitConverter.ToString(data)}");
 
-            MainThread.BeginInvokeOnMainThread(() => {
-                temperatureValue = temperature;
-                lastUpdateTime = DateTime.Now;
-                connectionStatus = "Receiving data";
+        try
+        {
+            float temperature;
+
+            // Depending on your device's format, use one of these parsing approaches:
+
+            // Option 1: Standard IEEE-11073 format (as in original code)
+            if (data.Length >= 5)
+            {
+                temperature = BitConverter.ToSingle(data, 1);
+            }
+            // Option 2: Direct 4-byte IEEE-754 float
+            else if (data.Length >= 4)
+            {
+                temperature = BitConverter.ToSingle(data, 0);
+            }
+            // Option 3: Two byte integer with scaling (common for many BLE sensors)
+            else if (data.Length >= 2)
+            {
+                short rawTemp = BitConverter.ToInt16(data, 0);
+                temperature = rawTemp / 100.0f; // Scale factor depends on your device
+            }
+            // Option 4: Single byte integer
+            else if (data.Length >= 1)
+            {
+                temperature = data[0];
+            }
+            else
+            {
+                Debug.WriteLine("Temperature data too short");
+                return;
+            }
+
+            Debug.WriteLine($"Parsed temperature: {temperature}°C");
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                TemperatureValue = temperature;
+                LastUpdateTime = DateTime.Now;
+                ConnectionStatus = "Receiving data";
             });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error parsing temperature data: {ex}");
         }
     }
 
     [RelayCommand]
     private async Task Disconnect()
     {
+        // Create a cancellation token source with 5 second timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
         try
         {
-            // Stop notifications first
-            await _temperatureCharacteristic.StopUpdatesAsync();
+            // Try to perform a proper disconnect with timeout
+            Task disconnectTask = DisconnectDeviceAsync(cts.Token);
 
-            // Disconnect from device
-            await _adapter.DisconnectDeviceAsync(_device);
+            // Either complete normally or timeout
+            await Task.WhenAny(disconnectTask, Task.Delay(5000, cts.Token));
 
-            // Navigate back to main page
+            // Navigate regardless of disconnect result
             await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlert("Error", $"Failed to disconnect: {ex.Message}", "OK");
+            Debug.WriteLine($"Disconnect error: {ex.Message}");
+            // Navigate anyway even if there was an error
+            await Shell.Current.GoToAsync("..");
+        }
+    }
+
+    private async Task DisconnectDeviceAsync(CancellationToken token)
+    {
+        try
+        {
+            // Stop notifications first
+            await _temperatureCharacteristic.StopUpdatesAsync().WaitAsync(token);
+
+            // Disconnect from device
+            await _adapter.DisconnectDeviceAsync(_device).WaitAsync(token);
+        }
+        catch (OperationCanceledException)
+        {
+            Debug.WriteLine("Disconnect operation timed out");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error during disconnect: {ex.Message}");
         }
     }
 
@@ -131,7 +202,8 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
         // Stop notifications if still connected
         if (_device.State == Plugin.BLE.Abstractions.DeviceState.Connected)
         {
-            MainThread.BeginInvokeOnMainThread(async () => {
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
                 try
                 {
                     await _temperatureCharacteristic.StopUpdatesAsync();
