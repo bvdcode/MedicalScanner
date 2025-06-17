@@ -17,10 +17,11 @@
         <!-- Temperature display -->
         <Grid Grid.Row="1" VerticalOptions="Center" HorizontalOptions="Center">
             <VerticalStackLayout HorizontalOptions="Center">
-                <Label Text="{Binding TemperatureValue, StringFormat='{0:F1}'}" 
+                <Label Text="{Binding TemperatureValue, StringFormat='{0:F1}°C'}" 
                        FontSize="72" FontAttributes="Bold" 
                        HorizontalOptions="Center"/>
-                <Label Text="°C" FontSize="36" 
+                <Label Text="{Binding TemperatureFValue, StringFormat='{0:F1}°F'}"
+                       FontSize="36" 
                        HorizontalOptions="Center"/>
                 <Label Text="{Binding LastUpdateTime, StringFormat='Updated: {0:T}'}" 
                        Margin="0,20,0,0"

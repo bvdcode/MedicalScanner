@@ -1,13 +1,14 @@
-﻿using MedicalScanner.ViewModels;
+﻿using MedicalScanner.Services;
+using MedicalScanner.ViewModels;
 
 namespace MedicalScanner.Views
 {
     public partial class MainPage : ContentPage
     {
-        public MainPage()
+        public MainPage(LoadingService loadingService)
         {
             InitializeComponent();
-            BindingContext = new MainViewModel();
+            BindingContext = new MainViewModel(loadingService);
         }
     }
 }

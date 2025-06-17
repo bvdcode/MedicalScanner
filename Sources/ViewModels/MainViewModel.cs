@@ -30,8 +30,11 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public MainViewModel()
+    private readonly Services.LoadingService _loadingService;
+
+    public MainViewModel(Services.LoadingService loadingService)
     {
+        _loadingService = loadingService;
         _adapter = CrossBluetoothLE.Current.Adapter;
         _adapter.DeviceDiscovered += OnDeviceDiscovered;
         _adapter.ScanTimeoutElapsed += (_, _) => StopScanUIUpdate();
@@ -53,7 +56,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             // Show loading indicator
-            await Shell.Current.DisplayAlert("Connecting", $"Connecting to {device.Name ?? "device"}...", "OK");
+            _loadingService.ShowLoading($"Connecting to {device.Name ?? "device"}...");
 
             // Connect with timeout
             var connectTask = _adapter.ConnectToDeviceAsync(device);
@@ -98,6 +101,7 @@ public partial class MainViewModel : ObservableObject
                     var tempPage = new TemperaturePage(tempViewModel);
 
                     // Navigate to the temperature page
+                    _loadingService.HideLoading();
                     await Shell.Current.Navigation.PushAsync(tempPage);
                     return;
                 }
@@ -126,6 +130,11 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             await Shell.Current.DisplayAlert("Connection Error", $"Failed to connect: {ex.Message}", "OK");
+        }
+        finally
+        {
+            // Always hide the loading indicator when done
+            _loadingService.HideLoading();
         }
     }
 

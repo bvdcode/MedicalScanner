@@ -29,6 +29,9 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
     private float temperatureValue;
 
     [ObservableProperty]
+    private float temperatureFValue;
+
+    [ObservableProperty]
     private DateTime lastUpdateTime = DateTime.Now;
 
     public TemperatureViewModel(IDevice device, IService temperatureService,
@@ -135,6 +138,7 @@ public partial class TemperatureViewModel : ObservableObject, IDisposable
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 TemperatureValue = temperature;
+                TemperatureFValue = (temperature * 9 / 5) + 32; // Convert to Fahrenheit
                 LastUpdateTime = DateTime.Now;
                 ConnectionStatus = "Receiving data";
             });

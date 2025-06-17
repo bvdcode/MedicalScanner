@@ -22,7 +22,7 @@
                 SemanticProperties.Description="medical and bluetooth logo" />
 
             <Label  
-                Text="BLE Scanner"  
+                Text="BLE Data Streaming"  
                 Style="{StaticResource Headline}"  
                 SemanticProperties.HeadingLevel="Level1" />
 
@@ -47,7 +47,7 @@
                                 </VerticalStackLayout>
                                 <Button 
                                     Grid.Column="1"
-                                    Text="Info" 
+                                    Text="Connect" 
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=ConnectCommand}" 
                                     CommandParameter="{Binding .}" 
                                     VerticalOptions="Center"
