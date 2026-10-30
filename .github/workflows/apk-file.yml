@@ -21,15 +21,13 @@ jobs:
           fetch-depth: 0
 
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v0.10.2
+        uses: GitTools/actions/gitversion/setup@v4.7.0
         with:
-          versionSpec: '5.x'
+          versionSpec: 6.8.2
 
       - name: Determine Version
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v0.10.2
-        with:
-          useConfigFile: false
+        uses: GitTools/actions/gitversion/execute@v4.7.0
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -65,8 +63,8 @@ jobs:
         shell: bash
         run: |
           VERSION_FILE="${{ steps.set_project.outputs.project_path }}"
-          VERSION="${{ steps.gitversion.outputs.semVer }}"
-          BUILD_NUMBER="${{ steps.gitversion.outputs.buildMetaData }}"
+          VERSION="${{ steps.gitversion.outputs.MajorMinorPatch }}"
+          BUILD_NUMBER="${{ steps.gitversion.outputs.versionSourceDistance }}"
           
           echo "Setting version to $VERSION (build: $BUILD_NUMBER)"
           sed -i "s|<ApplicationVersion>.*</ApplicationVersion>|<ApplicationVersion>$BUILD_NUMBER</ApplicationVersion>|g" "$VERSION_FILE"
@@ -91,6 +89,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "v${{ steps.gitversion.outputs.semVer }}"
-          tag_name: "v${{ steps.gitversion.outputs.semVer }}"
+          name: "v${{ steps.gitversion.outputs.MajorMinorPatch }}"
+          tag_name: "v${{ steps.gitversion.outputs.MajorMinorPatch }}"
           files: ${{ steps.find_apk.outputs.apk_path }}
